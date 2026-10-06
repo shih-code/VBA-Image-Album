@@ -508,7 +508,10 @@ Private Sub ApplyFileMatch(ByVal origPath As String, ByVal catRow As Long, ByVal
     End If
     
     If UCase(origPath) <> UCase(newPath) Then
-        If fso.FileExists(newPath) Then On Error Resume Next: fso.DeleteFile newPath, True: On Error GoTo 0
+        If fso.FileExists(newPath) Then
+            Context.LogStore.Record "TX_INFO", "DEDUPLICATE", "正名取代：刪除同圖舊版本：" & newPath & " | 由此檔取代：" & origPath
+            On Error Resume Next: fso.DeleteFile newPath, True: On Error GoTo 0
+        End If
         fso.MoveFile origPath, newPath
     End If
      
