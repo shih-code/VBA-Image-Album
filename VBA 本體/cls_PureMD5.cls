@@ -1,24 +1,28 @@
-' ==========================================================
-' MODULE: cls_PureMD5 (類別模組)
-' PURPOSE: 純 VBA 實作的 MD5 密碼學雜湊運算引擎，取代原本透過 CreateObject(
-'          "System.Security.Cryptography.MD5CryptoServiceProvider") 呼叫
-'          .NET COM Interop 元件的做法。緣起 V18 Automation 錯誤
-'          -2146232576（0x80131700，.NET CLR／mscorlib 保留 HRESULT 區段，
-'          代表該台機器 .NET Runtime 初始化 MD5CryptoServiceProvider 失敗，
-'          常見成因為 Windows 以 CNG 取代舊版 CAPI 後端造成的相容性問題）。
-'          本類別刻意提供與 .NET MD5CryptoServiceProvider 相同的方法簽章
-'          （ComputeHash_2），故 Mod_Crypto.bas 呼叫端程式碼無須修改，僅
-'          Mod_WorkflowManager.bas 組裝 sysTokens 時改注入 New cls_PureMD5
-'          取代 CreateObject(PROGID_MD5)（RunPhase1／RunPhase2 各一處）。
-' EXPORTS: ComputeHash_2
-' IMPORTS: 無
-' FORBIDDEN: 嚴禁在本類別內以任何形式呼叫 CreateObject 取得外部 COM／.NET
-'            元件；本類別存在的唯一目的就是消除這類環境依賴，任何修改都
-'            不得違背此設計初衷。
-' DEPENDENCIES: ACDS_ContractRegistry.md
-' AUTHOR: 鄭詩樺 (Cheng, Shih-Hua)
-' VERSION: 1.0.0 [Stability: Stable]
-' ==========================================================
+ ' ==========================================================
+ ' MODULE: cls_PureMD5 (類別模組)
+ ' PURPOSE: 純 VBA 實作的 MD5 密碼學雜湊運算引擎，取代原本透過 CreateObject(
+ '          "System.Security.Cryptography.MD5CryptoServiceProvider") 呼叫
+ '          .NET COM Interop 元件的做法。緣起 V18（浮水印專案）Automation
+ '          錯誤 -2146232576（0x80131700，.NET CLR／mscorlib 保留 HRESULT
+ '          區段，代表該台機器 .NET Runtime 初始化 MD5CryptoServiceProvider
+ '          失敗，常見成因為 Windows 以 CNG 取代舊版 CAPI 後端造成的相容性
+ '          問題）；圖庫（影像自動化歸檔中樞系統）同樣存在此依賴，故一併
+ '          引入本類別消除風險。本類別刻意提供與 .NET MD5CryptoServiceProvider
+ '          相同的方法簽章（ComputeHash_2），故圖庫內僅 Mod_Utils.bas 的
+ '          GetMD5 函式需要改動（唯一呼叫點），改為 New cls_PureMD5 取代
+ '          CreateObject("System.Security.Cryptography.MD5CryptoServiceProvider")，
+ '          並以手動 Hex() 補零迴圈取代原本 MSXML2.DOMDocument 的 byte→hex
+ '          轉換，詳見 Mod_Utils.GetMD5 本體。
+ ' EXPORTS: ComputeHash_2
+ ' IMPORTS: 無
+ ' FORBIDDEN: 嚴禁在本類別內以任何形式呼叫 CreateObject 取得外部 COM／.NET
+ '            元件；本類別存在的唯一目的就是消除這類環境依賴，任何修改都
+ '            不得違背此設計初衷。
+ ' DEPENDENCIES: ACDS_ContractRegistry.md（本專案版本，見「中央合約註冊表
+ '               （影像自動化歸檔中樞系統）」第七節 7.6 Utils 層）
+ ' AUTHOR: 鄭詩樺 (Cheng, Shih-Hua)
+ ' VERSION: 1.0.0 [Stability: Stable]
+ ' ==========================================================
 ' 【正確性驗證說明】演算法邏輯已於 Python 環境以相同的 32 位元無號運算規則
 ' （AddUnsigned／RotateLeft／RShift）逐步模擬，並對空字串、"a"／"abc"／標準
 ' 測試字串、跨越 56/64 bytes 填補邊界的長度（0, 1, 55, 56, 57, 63, 64, 65,
