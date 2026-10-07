@@ -366,32 +366,41 @@ End Sub
 ' [檔案雜湊]：GetMD5
 ' 目的：產生檔案唯一 HASH。內建 OOM 降級防線，防止巨型檔案撐爆 ADODB 記憶體。
 ' ------------------------------------------------------------------------------
-Public Function GetMD5(ByVal fso As Object, ByVal filePath As String) As String
-    Dim adoStream As Object, xmlDoc As Object, xmlNode As Object, md5Provider As Object, bytes() As Byte
+ Public Function GetMD5(ByVal fso As Object, ByVal filePath As String) As String
+    Dim adoStream As Object, bytes() As Byte
+    Dim md5Engine As New cls_PureMD5
+    Dim hashBytes() As Byte
     Dim fSize As Double
-    On Error GoTo MD5ErrorHandler
-    
-    If fso.FileExists(filePath) Then fSize = fso.GetFile(filePath).Size
-    If fSize > 52428800 Then GoTo MD5ErrorHandler
-    
-    Set adoStream = CreateObject("ADODB.Stream"): adoStream.Type = 1: adoStream.Open: adoStream.LoadFromFile filePath: bytes = adoStream.Read: adoStream.Close
-    Set md5Provider = CreateObject("System.Security.Cryptography.MD5CryptoServiceProvider"): bytes = md5Provider.ComputeHash_2((bytes))
-    Set xmlDoc = CreateObject("MSXML2.DOMDocument"): Set xmlNode = xmlDoc.createElement("b64")
-    xmlNode.DataType = "bin.hex": xmlNode.nodeTypedValue = bytes: GetMD5 = Replace(xmlNode.Text, vbLf, "")
+    Dim idxByte As Long, strHex As String, strFrag As String
+     On Error GoTo MD5ErrorHandler
+     
+     If fso.FileExists(filePath) Then fSize = fso.GetFile(filePath).Size
+     If fSize > 52428800 Then GoTo MD5ErrorHandler
+     
+     Set adoStream = CreateObject("ADODB.Stream"): adoStream.Type = 1: adoStream.Open: adoStream.LoadFromFile filePath: bytes = adoStream.Read: adoStream.Close
+     hashBytes = md5Engine.ComputeHash_2(bytes)
 
+     strHex = ""
+     For idxByte = LBound(hashBytes) To UBound(hashBytes)
+         strFrag = Hex(hashBytes(idxByte))
+         If Len(strFrag) = 1 Then strFrag = "0" & strFrag
+         strHex = strHex & strFrag
+     Next idxByte
+     GetMD5 = LCase(strHex)
+ 
 MD5Cleanup:
-    Set adoStream = Nothing: Set xmlNode = Nothing: Set xmlDoc = Nothing: Set md5Provider = Nothing
-    Exit Function
-
+     Set adoStream = Nothing: Set md5Engine = Nothing
+     Exit Function
+ 
 MD5ErrorHandler:
-    If fso.FileExists(filePath) Then
-        Dim f As Object: Set f = fso.GetFile(filePath)
-        GetMD5 = "LARGE_" & Hex(f.Size) & "_" & Hex(DateDiff("s", "1970/1/1", f.DateLastModified))
-    Else
-        GetMD5 = ""
-    End If
-    Resume MD5Cleanup
-End Function
+     If fso.FileExists(filePath) Then
+         Dim f As Object: Set f = fso.GetFile(filePath)
+         GetMD5 = "LARGE_" & Hex(f.Size) & "_" & Hex(DateDiff("s", "1970/1/1", f.DateLastModified))
+     Else
+         GetMD5 = ""
+     End If
+     Resume MD5Cleanup
+ End Function
 
 ' ------------------------------------------------------------------------------
 ' [輕量探測]：GetImageDimensions
